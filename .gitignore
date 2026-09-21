@@ -42,3 +42,5 @@ build/
 ### Playwright ###
 browser-profile/
 
+class-data.xml
+enrollment.json
