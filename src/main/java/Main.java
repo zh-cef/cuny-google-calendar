@@ -58,5 +58,9 @@ public class Main {
         DocumentBuilder builder = factory.newDocumentBuilder();
         Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
         doc.getDocumentElement().normalize();
+
+        for (CourseEvent event : ScheduleParser.parse(doc, enrollMap)) {
+            System.out.println(event);
+        }
     }
 }

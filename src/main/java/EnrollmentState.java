@@ -1,5 +1,8 @@
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.List;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class EnrollmentState {
     private List<CourseEntry> cnfs;
 
