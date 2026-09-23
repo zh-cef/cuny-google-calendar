@@ -24,6 +24,8 @@ import java.time.ZonedDateTime;
 import java.util.Collections;
 import java.util.List;
 
+import static org.apache.commons.codec.digest.DigestUtils.sha256Hex;
+
 public class GoogleCalendarParser {
     private static final String APPLICATION_NAME = "CUNY Google Calendar";
     private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
@@ -35,9 +37,7 @@ public class GoogleCalendarParser {
 
     /**
      * Direct the user to Google login page to get access to the user's Google calendar.
-     * @param HTTP_TRANSPORT
      * @return credential of the user
-     * @throws IOException
      */
     private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT) throws IOException {
         InputStream in = GoogleCalendarParser.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
@@ -58,9 +58,7 @@ public class GoogleCalendarParser {
 
     /**
      * Either create a new calendar called CUNY Classes or return the existing CUNY Classes calendar ID
-     * @param service
      * @return Google Calendar ID
-     * @throws IOException
      */
     private static String getOrCreateCategoryCalendar(Calendar service) throws IOException {
         String pageToken = null;
@@ -86,10 +84,43 @@ public class GoogleCalendarParser {
     }
 
     /**
+     * Stop the insertion process when faced rate limit and wait until it is good for the next turn
+     */
+    private static void insertWithBackoff(Calendar service, String calendarId, Event event)
+            throws IOException {
+        int maxRetries = 5;
+        for (int attempt = 0; attempt < maxRetries; attempt++) {
+            try {
+                service.events().insert(calendarId, event).execute();
+                return;
+            } catch (GoogleJsonResponseException e) {
+                int status = e.getStatusCode();
+
+                boolean isRateLimit = (status == 403 || status == 429)
+                        && e.getDetails() != null
+                        && "rateLimitExceeded".equals(e.getDetails().getErrors().get(0).getReason());
+
+                if (!isRateLimit) throw e;
+
+                if (attempt == maxRetries - 1)
+                    throw new RuntimeException("Rate limit: gave up after " + maxRetries + " retries", e);
+
+                long wait = (long) (Math.pow(2, attempt) * 1000) + (long) (Math.random() * 1000);
+                wait = Math.min(wait, 64_000);
+                System.out.println("Rate limited, retrying in " + wait + "ms (attempt "
+                        + (attempt + 1) + "/" + maxRetries + ")");
+                try {
+                    Thread.sleep(wait);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw new RuntimeException(ie);
+                }
+            }
+        }
+    }
+
+    /**
      * Parse course events into Google calendar events and insert them into user's Google Calendar
-     * @param courseEvents
-     * @throws GeneralSecurityException
-     * @throws IOException
      */
     public static void insert(List<CourseEvent> courseEvents) throws GeneralSecurityException, IOException {
         final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
@@ -104,8 +135,8 @@ public class GoogleCalendarParser {
             ZonedDateTime endTime = ZonedDateTime.of(courseEvent.getDate(), courseEvent.getStartTime(), ZONE);
 
             //Unique id for each event to prevent duplicate
-            String eventId = (courseEvent.getCnkey() + courseEvent.getDate() + courseEvent.getStartTime())
-                    .replaceAll("[^a-zA-Z0-9]", "");
+            String raw = courseEvent.getCnkey() + "-" + courseEvent.getDate() + "-" + courseEvent.getStartTime();
+            String eventId = sha256Hex(raw);
 
             //Creating calendar events from course events
             Event googleEvent = new Event()
@@ -121,7 +152,7 @@ public class GoogleCalendarParser {
                     .setId(eventId);
 
             try {
-                service.events().insert(calendarId, googleEvent).execute();
+                insertWithBackoff(service, calendarId, googleEvent);
             } catch (GoogleJsonResponseException e) {
                 if (e.getStatusCode() == 409)
                     System.out.println(courseEvent.getCnkey() + " already exists");
