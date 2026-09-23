@@ -44,3 +44,5 @@ browser-profile/
 
 class-data.xml
 enrollment.json
+/src/main/resources/credentials.json
+/tokens/

@@ -10,12 +10,14 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.security.GeneralSecurityException;
 import java.util.HashMap;
 import java.util.Map;
 
 public class Main {
     private final static boolean SKIP_FETCH = true;
-    public static void main(String[] args) throws IOException, ParserConfigurationException, SAXException {
+    public static void main(String[] args)
+            throws IOException, ParserConfigurationException, SAXException, GeneralSecurityException {
 
         if (!SKIP_FETCH) {
             if (!FetchData.fetch()) {
@@ -59,8 +61,6 @@ public class Main {
         Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
         doc.getDocumentElement().normalize();
 
-        for (CourseEvent event : ScheduleParser.parse(doc, enrollMap)) {
-            System.out.println(event);
-        }
+        GoogleCalendarParser.insert(ScheduleParser.parse(doc, enrollMap));
     }
 }

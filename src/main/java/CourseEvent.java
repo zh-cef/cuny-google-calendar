@@ -10,7 +10,7 @@ public class CourseEvent {
     private LocalTime startTime;
     private LocalTime endTime;
 
-    public String getCourseKey() {
+    public String getCnkey() {
         return cnkey;
     }
 
