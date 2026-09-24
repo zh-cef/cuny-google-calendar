@@ -40,15 +40,6 @@ public class ScheduleParser {
                 continue;
             }
 
-            //Get teach and location from the selection
-            String teacher = "", location = "";
-            NodeList blocks = selection.getElementsByTagName("block");
-            if (blocks.getLength() > 0) {
-                Element block = (Element) blocks.item(0);
-                teacher = block.getAttribute("teacher");
-                location = block.getAttribute("location");
-            }
-
             //Move to the parent node
             Node parent = selection.getParentNode();
             if (!(parent instanceof Element) || !"uselection".equals(parent.getNodeName())) {
@@ -64,11 +55,16 @@ public class ScheduleParser {
                     tbById.put(((Element) n).getAttribute("id"), (Element) n);
             }
 
+            //Go to the blocks
+            NodeList blocks = selection.getElementsByTagName("block");
             for (int j = 0; j < blocks.getLength(); j++) {
                 Element block = (Element) blocks.item(j);
+                String teacher = block.getAttribute("teacher");
+                String location = block.getAttribute("location");
                 String timeblockids = block.getAttribute("timeblockids");
                 if (timeblockids.isEmpty()) continue;
 
+                //Parsing into course event
                 for (String id : timeblockids.split(",")) {
                     Element timeblock = tbById.get(id.trim());
                     if (timeblock == null) continue;
@@ -111,14 +107,22 @@ public class ScheduleParser {
 
     private static DayOfWeek dayOfWeek(int day) {
         switch (day) {
-            case 1 : return DayOfWeek.SUNDAY;
-            case 2: return DayOfWeek.MONDAY;
-            case 3: return DayOfWeek.TUESDAY;
-            case 4: return DayOfWeek.WEDNESDAY;
-            case 5: return DayOfWeek.THURSDAY;
-            case 6: return DayOfWeek.FRIDAY;
-            case 7: return DayOfWeek.SATURDAY;
-            default: throw new IllegalArgumentException("Unknown day: " + day);
+            case 1:
+                return DayOfWeek.SUNDAY;
+            case 2:
+                return DayOfWeek.MONDAY;
+            case 3:
+                return DayOfWeek.TUESDAY;
+            case 4:
+                return DayOfWeek.WEDNESDAY;
+            case 5:
+                return DayOfWeek.THURSDAY;
+            case 6:
+                return DayOfWeek.FRIDAY;
+            case 7:
+                return DayOfWeek.SATURDAY;
+            default:
+                throw new IllegalArgumentException("Unknown day: " + day);
         }
     }
 

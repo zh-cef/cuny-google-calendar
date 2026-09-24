@@ -61,6 +61,10 @@ public class Main {
         Document doc = builder.parse(new ByteArrayInputStream(xml.getBytes(StandardCharsets.UTF_8)));
         doc.getDocumentElement().normalize();
 
+        for (CourseEvent ce : ScheduleParser.parse(doc, enrollMap)) {
+            System.out.println(ce);
+        }
+
         GoogleCalendarParser.insert(ScheduleParser.parse(doc, enrollMap));
     }
 }
